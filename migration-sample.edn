@@ -1,0 +1,9 @@
+{:id "0155996f-22ab-4a98-acd6-d9749b8515ea"
+ :timestamp 834234
+ :description "Creates the 'users' table."
+ :statements {"CREATE_TABLE_USERS"
+              {:apply "CREATE TABLE users (
+                        id UUID,
+                        name VARCHAR(50)
+                      )"
+               :rollback "DROP TABLE users"}}}
