@@ -7,13 +7,13 @@
     Applies all pending migrations.
 
   - (migrate! migrations-dir-path migration-name db-conn-conf)
-    Applies migrations up to and including `migration-name`.
+    Applies migrations up to and including `migration-id`.
 
   - (migrate! migrations-dir-path migration-name apply-previous? db-conn-conf)
     If `apply-previous?` is true, applies all migrations up to and including
-    `migration-name`. Otherwise, applies only the specified migration."
-  ([migrations-dir-path migration-name apply-previous? db-conn-conf])
-  ([migrations-dir-path migration-name db-conn-conf])
+    `migration-id`. Otherwise, applies only the specified migration."
+  ([migrations-dir-path migration-id apply-previous? db-conn-conf])
+  ([migrations-dir-path migration-id db-conn-conf])
   ([migrations-dir-path db-conn-conf]))
 
 (defn rollback!
@@ -23,9 +23,9 @@
     Rolls back the last successfully applied migration.
 
   - (rollback! migrations-dir-path migration-name db-conn-conf)
-    Rolls back all migrations up to and including `migration-name`."
+    Rolls back all migrations up to and including `migration-id`."
   ([migrations-dir-path db-conn-conf])
-  ([migrations-dir-path migration-name db-conn-conf]))
+  ([migrations-dir-path migration-id db-conn-conf]))
 
 (defn retrieve-migrations
   "Retrieves all existent migrations.
