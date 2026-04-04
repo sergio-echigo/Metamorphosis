@@ -1,7 +1,8 @@
 (ns migrator.specs
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s])
+  (:import java.time.Instant))
 
-;; TODO: define database access settings spec
+;; Utilitary functions for specifications.
 (defn- unix? [timestamp]
   (try
     (Instant/ofEpochMilli timestamp)
