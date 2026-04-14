@@ -31,15 +31,15 @@
                          (.endsWith (.getName %) ".edn")))
            (map #(.getPath %))))))
 
-(defn edn-files->migrations-report
+(defn edn-files->migrations
   [edn-files migration-id apply-previous?]
   (let [file-count (count edn-files)]
     (reduce (fn [r f] (let [loaded-edn (load-edn f)
                             id (:id loaded-edn)
-                            migration-report {f {:valid? (s/valid? :migration/migration loaded-edn)
-                                                 :id id
-                                                 :timestamp (:timestamp loaded-edn)}}
-                            full-report (assoc-in r [:migrations-report f] migration-report)]
+                            migration-report {:valid? (s/valid? :migration/migration loaded-edn)
+                                              :id id
+                                              :timestamp (:timestamp loaded-edn)}
+                            full-report (assoc-in r [:migrations f] migration-report)]
                         (cond
 
                           ;; All previous migrations MUST BE applied.
@@ -49,10 +49,16 @@
 
                           ;; A specific migration MUST BE applied and it has been found:
                           (= migration-id id)
-                          (reduced {:count 1 :migrations-report migration-report})
+                          (reduced {:count 1 :migrations (assoc {} f migration-report)})
 
                           ;; A specific migration MUST BE applied and it has not been found yet:
-                          :else r))) {:count file-count :migrations-report {}} edn-files))))
+                          :else r))) {:count file-count :migrations {}} edn-files)))
+
+(defn load-migration-edn [filepath]
+  "Reads a EDN file and returns migration-specific data."
+  (let [{:keys [description, statements]} (load-edn filepath)]
+    {:description description
+     :statements statements}))
 
 (defn valid-migration?
   "Verifies whether a "
@@ -69,3 +75,9 @@
         values (vals migrations)]
     (or (not= count (count (distinct (map :id values))))
         (not= count (count (distinct (map :timestamp values)))))))
+
+(defn die!
+  "Prints a message and terminates the application with an error code."
+  [message]
+  (println message)
+  (System/exit 1))
