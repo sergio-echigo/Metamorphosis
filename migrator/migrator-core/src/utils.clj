@@ -6,7 +6,7 @@
   (:import (java.io File)))
 
 ;; Taken from https://clojuredocs.org/clojure.edn/read
-(defn- load-edn
+(defn load-edn
   "Load edn from an io/reader source (filename or io/resource)."
   [source]
   (try
@@ -14,22 +14,23 @@
       (edn/read (java.io.PushbackReader. r)))
 
     (catch java.io.IOException e
-      (printf "Couldn't open '%s': %s\n" source (.getMessage e))
-      nil)
+      (println e))
     (catch RuntimeException e
-      (printf "Error parsing edn file '%s': %s\n" source (.getMessage e))
-      nil)))
+      (println e))))
 
 (defn retrieve-edn-files!
   "Returns a sequence of .edn files relative paths."
   [dir-path]
-  (let [java-dir (File. dir-path)]
-    (when (.isDirectory java-dir)
-      (->> (.listFiles java-dir)
-           (seq)
-           (filter #(and (.isFile %)
-                         (.endsWith (.getName %) ".edn")))
-           (map #(.getPath %))))))
+  (try
+    (let [java-dir (File. dir-path)]
+      (when (.isDirectory java-dir)
+        (->> (.listFiles java-dir)
+            (seq)
+            (filter #(and (.isFile %)
+                          (.endsWith (.getName %) ".edn")))
+            (map #(.getPath %)))))
+    (catch Exception e
+      [])))
 
 (defn edn-files->migrations
   [edn-files migration-id apply-previous?]
