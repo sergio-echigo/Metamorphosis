@@ -6,7 +6,7 @@
 (defn edn-files->migrations-report
   "Iterates over a sequence of maps and returns a migrations report from it.
   
-  Each map MUST HAVE:
+  Each map represents EDN file information. Each map MUST HAVE:
   - The key :file-path (path to an EDN file);
   - The key :content (EDN file's content).
   
