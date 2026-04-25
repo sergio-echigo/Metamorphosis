@@ -30,12 +30,15 @@
   (execute-query! ds sql/SELECT_APPLIED_MIGRATIONS))
 
 (defn apply-statements!
-  "Applies multiple SQL statements into the database."
+  "Applies multiple SQL statements into a database.
+  
+  It imediately stops the execution if any of the statements fail."
   [ds statements]
   (reduce
-    (fn [error [name query]]
-      (let [{:keys [error?] :as result} (execute-query! ds query)]
+    (fn [error [statement-name statement-query]]
+      (let [{:keys [message error?] :as result} (execute-query! ds statement-query)]
         (if error?
-          (reduced (assoc result :metadata {:failed-statement name}))
+          (reduced (assoc result :metadata {:failed-statement statement-name}))
           result)))
+    nil
     statements))

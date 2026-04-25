@@ -3,6 +3,9 @@
             [migrator.specs :as specs]
             [clojure.spec.alpha :as s]))
 
+(def MIGRATIONS_IDENTIFIERS
+  [:id :timestamp])
+
 (defn edn-files->migrations-report
   "Iterates over a sequence of maps and returns a migrations report from it.
   
@@ -19,24 +22,17 @@
              report (-> content
                         (select-keys [:id :timestamp])
                         (into report-information))]
-         (cond
-
-           ;; A specific migration MUST BE found and it was found. Previous migrations may be applied (see the second conditional)
-           (and migration-id
-                (= migration-id id))
-           (reduced (conj reports report))
-
-           ;; Only previous OR all migrations need to be applied.
-           (or apply-previous?
-               (not migration-id))
-           (conj reports report)
-
-           ;; A specific migration MUST BE applied (and only it).
-           :else
-           reports)))
+         (conj reports report)))
      []
      edn-files))
   ([edn-files migration-id]
    (edn-files->migrations-report edn-files migration-id true))
   ([edn-files]
    (edn-files->migrations-report edn-files nil true)))
+
+(defn duplicated-identifiers?
+  [migrations migrations-count]
+  (some (fn [identifier] (and (not= migrations-count
+                                     (count (distinct (map identifier migrations))))
+                               identifier)) 
+         MIGRATIONS_IDENTIFIERS))

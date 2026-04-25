@@ -7,4 +7,4 @@
   "CREATE TABLE _migrations (id VARCHAR(50) NOT NULL PRIMARY KEY, timestamp BIGINT NOT NULL)")
 
 (def SELECT_APPLIED_MIGRATIONS
-  "SELECT * FROM _migrations")
+  "SELECT id FROM _migrations")

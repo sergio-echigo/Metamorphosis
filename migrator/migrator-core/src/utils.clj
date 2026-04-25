@@ -32,6 +32,10 @@
     (catch Exception e
       [])))
 
+(defn map-edns-content [edn-files]
+  (map (fn [file-path] {:file-path file-path
+                        :content (load-edn file-path)}) edn-files))
+
 (defn edn-files->migrations
   [edn-files migration-id apply-previous?]
   (let [file-count (count edn-files)]
@@ -55,11 +59,9 @@
                           ;; A specific migration MUST BE applied and it has not been found yet:
                           :else r))) {:count file-count :migrations {}} edn-files)))
 
-(defn load-migration-edn [filepath]
+(defn migration-edn->statements [edn-content]
   "Reads a EDN file and returns migration-specific data."
-  (let [{:keys [description, statements]} (load-edn filepath)]
-    {:description description
-     :statements statements}))
+  (:statements edn-content))
 
 (defn valid-migration?
   "Verifies whether a "
