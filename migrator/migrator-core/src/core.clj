@@ -45,23 +45,26 @@
   - :undo-statements-history -> A map of statements that should be executed to rollback the executed statements;
   - :failed-migration -> A map containing information about a failed migration -- or nil;
   - :successful-migrations -> A vector containing all migrations that could be successfully executed."
-  (reduce
-    (fn [result {:keys [id file-path]}]
-      (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements file-path appliance-type)
-            {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements)]
-        (if error?
-          (reduced (-> result
-                       (update :undo-statements-history into (take-while (fn [[statement-name _]] (not= failed-statement statement-name)) undo-statements))
-                       (assoc-in [:failed-migration :id] id)
-                       (assoc-in [:failed-migration :failed-statement :name] failed-statement)
-                       (assoc-in [:failed-migration :failed-statement :reason] message)))
-          (-> result
-              (update :undo-statements-history into undo-statements)
-              (update :successful-migrations into [id])))))
-    {:appliance-order (map :id migrations)
-     :undo-statements-history {}
-     :successful-migrations []}
-    migrations))
+  (update
+    (reduce
+      (fn [result {:keys [id file-path]}]
+        (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements file-path appliance-type)
+              {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements)]
+          (if error?
+            (reduced (-> result
+                         (update :undo-statements-history into (take-while (fn [[statement-name _]] (not= failed-statement statement-name)) (reverse undo-statements)))
+                         (assoc-in [:failed-migration :id] id)
+                         (assoc-in [:failed-migration :failed-statement :name] failed-statement)
+                         (assoc-in [:failed-migration :failed-statement :reason] message)))
+            (-> result
+                (update :undo-statements-history into (reverse undo-statements))
+                (update :successful-migrations into [id])))))
+      {:appliance-order (map :id migrations)
+       :undo-statements-history {}
+       :successful-migrations []}
+      migrations)
+    :undo-statements-history
+    reverse))
 
 (defn- apply-and-rollback-migrations [ds migrations appliance-type]
   "Applies a collection of migrations using the `apply-migrations-into-database` function. It uses the returned `:undo-statements-history` map to rollback
