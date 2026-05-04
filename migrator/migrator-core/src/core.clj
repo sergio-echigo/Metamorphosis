@@ -50,7 +50,7 @@
   Returns a map containing the following information:
   - :undo-statements-history -> A map of statements that should be executed to rollback the executed statements;
   - :failed-migration -> A map containing information about a failed migration -- or nil;
-  - :successful-migrations -> A vector containing all migrations that could be successfully executed."
+  - :successfully-executed-migrations -> A vector containing all migrations that could be successfully executed."
   (update
     (reduce
       (fn [result {:keys [id file-path]}]
@@ -64,10 +64,10 @@
                          (assoc-in [:failed-migration :failed-statement :reason] message)))
             (-> result
                 (update :undo-statements-history into (reverse undo-statements))
-                (update :successful-migrations into [id])))))
+                (update :successfully-executed-migrations into [id])))))
       {:appliance-order (map :id migrations)
        :undo-statements-history []
-       :successful-migrations []}
+       :successfully-executed-migrations []}
       migrations)
     :undo-statements-history
     reverse))
@@ -80,7 +80,7 @@
 
   Returns the returned value of the `apply-migrations-into-database` function but it appends the `:failed-undo-statement` attribute to return information about
   any 'undo' statement that have failed."
-  (let [{:keys [undo-statements-history failed-migration failed-statement successful-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
+  (let [{:keys [undo-statements-history failed-migration failed-statement successfully-executed-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
     (if (and
           (not (empty? undo-statements-history))
           (:id failed-migration))
@@ -191,7 +191,7 @@
                  (database/create-migrations-table! ds))
 
                ;; Applying every migration
-               (let [{:keys [failed-migration failed-undo-statement successful-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :apply)
+               (let [{:keys [failed-migration failed-undo-statement successfully-executed-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :apply)
                      error? (not (nil? failed-migration))]
                  (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r)))))))))
   ([migrations-dir-path db-conn-conf]
