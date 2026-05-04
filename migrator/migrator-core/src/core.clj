@@ -207,8 +207,50 @@
 
   - (rollback! migrations-dir-path migration-name db-conn-conf)
   Rolls back all migrations up to and including `migration-id`."
-  ([migrations-dir-path db-conn-conf])
-  ([migrations-dir-path migration-id db-conn-conf]))
+  ([migrations-dir-path db-conn-conf {:keys [apply-previous? ignore-invalid-edns? migration-id verify-internal-migrations?],
+                                      :or {apply-previous? true ignore-invalid-edns? false migration-id nil verify-internal-migrations? true}}]
+
+   ;; Validating if database connection configuration is in the correct model:
+   (if-not (s/valid? :next.jdbc.specs/db-spec db-conn-conf)
+     (standardized-response true "`db-conn-conf` is not in the required model. Please, use the :next.jdbc.specs/db-spec model.")
+
+     ;; Obtaining migrations from the provided directory, filtering by valid migrations and sorting them by their timestamp.
+     (let [migrations-report (get-migrations-report migrations-dir-path migration-id apply-previous?)
+           migrations-report-count (count migrations-report)
+
+           valid-migrations (migrations-report->valid-sorted-migrations migrations-report :rollback migration-id apply-previous?)
+           valid-migrations-count (count valid-migrations)
+
+           ds (jdbc/get-datasource db-conn-conf)
+           
+           internal-migrations-table-exists? (database/migrations-table-exists? ds)
+           applied-migrations (if (and verify-internal-migrations? internal-migrations-table-exists?) (set (database/select-applied-migrations ds)) #{})
+           
+           valid-migrations (if verify-internal-migrations? (filter (comp applied-migrations :id) valid-migrations) valid-migrations)]
+
+       (cond
+         (empty? valid-migrations)
+         (standardized-response true "No valid migration was found in the provided directory.")
+
+         (and (not ignore-invalid-edns?)
+              (not= migrations-report-count valid-migrations-count))
+         (standardized-response true (str "Invalid migrations have been found in the provided directory: " (seq (filter (complement :valid-migration?) migrations-report))))
+
+         (migrations/duplicated-identifiers? migrations-report migrations-report-count)
+         (standardized-response true "There is duplicated, critical informations across all migrations!")
+
+         (empty? valid-migrations)
+         (standardized-response true "No migration needs to be rollbacked because no migration was found in the internal migrations table.")
+
+         :else
+         (let [{:keys [failed-migration failed-undo-statement successfully-executed-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :rollback)
+               error? (not (nil? failed-migration))]
+           (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r))))))
+  ([migrations-dir-path db-conn-conf]
+   (rollback! migrations-dir-path db-conn-conf {:apply-previous? true
+                                                :ignore-invalid-edns? false
+                                                :migration-id nil
+                                                :verify-internal-migrations? true})))
 
 (defn retrieve-migrations
   "Retrieves all existent migrations.
