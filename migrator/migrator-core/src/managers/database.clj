@@ -35,8 +35,10 @@
 (defn select-applied-migrations
   "Executes a query against the database that selects all existent records from the '_migrations' table."
   [ds]
-  (execute-query! ds sql/SELECT_APPLIED_MIGRATIONS))
-
+  (->> sql/SELECT_APPLIED_MIGRATIONS
+       (execute-query! ds)
+       :value
+       (map :id)))
 
 (defn apply-statements!
   "Applies multiple SQL statements into a database.

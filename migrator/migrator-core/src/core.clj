@@ -56,7 +56,6 @@
       (fn [result {:keys [id file-path]}]
         (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements id file-path appliance-type)
               {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements (= appliance-type :rollback))]
-          (println exec-statements)
           (if error?
             (reduced (-> result
                          (update :undo-statements-history into (take-while (fn [{:keys [name]}] (not= failed-statement name)) (reverse undo-statements)))
@@ -182,14 +181,19 @@
                applied-migrations (if internal-migrations-table-exists? (set (database/select-applied-migrations ds)) #{})
                valid-migrations (filter (comp (complement applied-migrations) :id) valid-migrations)]
 
-           ;; Creating internal _migrations table if it not exists:
-           (when-not internal-migrations-table-exists?
-             (database/create-migrations-table! ds))
+           ;; If all migrations were applied:
+           (if (empty? valid-migrations)
+             (standardized-response true "All migrations were already applied.")
+             (do
 
-           ;; Applying every migration
-           (let [{:keys [failed-migration failed-undo-statement successful-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :apply)
-                 error? (not (nil? failed-migration))]
-             (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r)))))))
+               ;; Creating internal _migrations table if it not exists:
+               (when-not internal-migrations-table-exists?
+                 (database/create-migrations-table! ds))
+
+               ;; Applying every migration
+               (let [{:keys [failed-migration failed-undo-statement successful-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :apply)
+                     error? (not (nil? failed-migration))]
+                 (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r)))))))))
   ([migrations-dir-path db-conn-conf]
    (migrate! migrations-dir-path db-conn-conf {:apply-previous? true
                                                :ignore-invalid-edns? false
