@@ -230,7 +230,9 @@
 
        (cond
          (empty? valid-migrations)
-         (standardized-response true "No valid migration was found in the provided directory.")
+         (if verify-internal-migrations?
+           (standardized-response true "No valid migration needs to be applied.")
+           (standardized-response true "No valid migration was found in the provided directory."))
 
          (and (not ignore-invalid-edns?)
               (not= migrations-report-count valid-migrations-count))
@@ -238,9 +240,6 @@
 
          (migrations/duplicated-identifiers? migrations-report migrations-report-count)
          (standardized-response true "There is duplicated, critical informations across all migrations!")
-
-         (empty? valid-migrations)
-         (standardized-response true "No migration needs to be rollbacked because no migration was found in the internal migrations table.")
 
          :else
          (let [{:keys [failed-migration failed-undo-statement successfully-executed-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :rollback)
