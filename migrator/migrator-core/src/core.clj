@@ -50,8 +50,8 @@
           (-> result
               (update :undo-statements-history into undo-statements)
               (update :successful-migrations into [id])))))
-    {:undo-statements-history {}
-     ;;:failed-migration {:id nil :failed-statement nil}
+    {:appliance-order (map :id migrations)
+     :undo-statements-history {}
      :successful-migrations []}
     migrations))
 
