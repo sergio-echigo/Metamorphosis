@@ -17,7 +17,7 @@
 (defn migrations-table-exists?
   "Executes a query against the database that verifies if the '_migrations' table do exists in the specified datasource."
   [ds]
-  (execute-query! ds sql/CHECK_MIGRATIONS_TABLE_EXISTENCE))
+  (not (empty? (:value (execute-query! ds sql/CHECK_MIGRATIONS_TABLE_EXISTENCE)))))
 
 (defn create-migrations-table!
   "Executes a query against the database that creates the '_migrations' table."
