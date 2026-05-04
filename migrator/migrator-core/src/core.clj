@@ -116,14 +116,10 @@
 
   Returns the report but filtered for only valid migrations that must be applied."
   [migrations-report appliance-type migration-id apply-previous?]
-  (let [specific-migration (some (fn [{id :id, :as whole-migration}] (and (= migration-id id) whole-migration)) migrations-report)]
+  (let [specific-migration (filter (fn [{:keys [id, valid-migration?]}] (and (= migration-id id) valid-migration?)) migrations-report)]
     (if (and migration-id
             (not apply-previous?))
-
-      ;; Here, it is expected that a single, valid migration is returned:
-      (if (:valid-migration? specific-migration)
-        [specific-migration]
-        [])
+      specific-migration
 
       ;; Here, all migrations "until" migration-id (including it) need to be returned:
       (let [c (if (= appliance-type :apply) < >)
@@ -131,9 +127,8 @@
                                          (filter :valid-migration?)
                                          (sort-by :timestamp c)
                                          (take-while (fn [{id :id}] (not= migration-id id))))]
-        (if specific-migration
-          (conj sorted-valid-migrations specific-migration)
-          sorted-valid-migrations)))))
+
+        (into sorted-valid-migrations specific-migration)))))
 
 (defn migrate!
   "Purpose:
@@ -173,6 +168,7 @@
                internal-migrations-table-exists? (database/migrations-table-exists? ds)
                applied-migrations (if internal-migrations-table-exists? (set (database/select-applied-migrations ds)) #{})
                valid-migrations (filter (comp (complement applied-migrations) :id) valid-migrations)]
+
 
            ;; Creating internal _migrations table if it not exists:
            (when-not internal-migrations-table-exists?
