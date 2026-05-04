@@ -55,7 +55,7 @@
     (reduce
       (fn [result {:keys [id file-path]}]
         (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements id file-path appliance-type)
-              {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements)]
+              {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements (= appliance-type :rollback))]
           (println exec-statements)
           (if error?
             (reduced (-> result
@@ -83,8 +83,8 @@
   any 'undo' statement that have failed."
   (let [{:keys [undo-statements-history failed-migration failed-statement successful-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
     (if (:id failed-migration)
-      (let [undo-statements-history (filter (fn [[statement query]] (not (nil? query))) undo-statements-history)
-            {:keys [error? message metadata]} (database/apply-statements! ds undo-statements-history)]
+      (let [undo-statements-history (filter (fn [{:keys [query]}] (not (nil? query))) undo-statements-history)
+            {:keys [error? message metadata]} (database/apply-statements! ds undo-statements-history (= appliance-type :apply))]
         (if error?
           (assoc r :failed-undo-statement {:name (:failed-statement metadata) :reason message})
           r))

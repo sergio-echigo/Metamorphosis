@@ -14,6 +14,14 @@
       {:error? true
        :message (str "Exception when trying to execute SQL query " sql ": " e)})))
 
+(defn- insert-migration!
+  [ds migration-id]
+  (execute-query! ds sql/INSERT_MIGRATION migration-id (str (.toEpochMilli (java.time.Instant/now)))))
+
+(defn- delete-migration!
+  [ds migration-id]
+  (execute-query! ds sql/DELETE_MIGRATION migration-id))
+
 (defn migrations-table-exists?
   "Executes a query against the database that verifies if the '_migrations' table do exists in the specified datasource."
   [ds]
@@ -29,16 +37,26 @@
   [ds]
   (execute-query! ds sql/SELECT_APPLIED_MIGRATIONS))
 
+
 (defn apply-statements!
   "Applies multiple SQL statements into a database.
   
   It imediately stops the execution if any of the statements fail."
-  [ds statements]
-  (reduce
-    (fn [error {:keys [name query]}]
+  [ds statements rollback?]
+  (let [internal-migrations-operation (if rollback? delete-migration! insert-migration!)]
+
+    ;; Looping through each statement
+    (loop [[{:keys [migration-id name query]} & remaining-statements] statements]
+
+      ;; Executing the statement query
       (let [{:keys [message error?] :as result} (execute-query! ds query)]
+
+        ;; If any error happens, returning immediately.
         (if error?
-          (reduced (assoc result :metadata {:failed-statement name}))
-          result)))
-    nil
-    statements))
+          (assoc result :metadata {:failed-statement name})
+
+          ;; If no statement needs to be applied anymore, then altering the internal migrations table.
+          ;; Otherwise, continuing the normal flow.
+          (if (empty? remaining-statements)
+            (internal-migrations-operation ds migration-id)
+            (recur remaining-statements)))))))

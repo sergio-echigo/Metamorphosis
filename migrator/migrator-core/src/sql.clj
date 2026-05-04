@@ -8,3 +8,9 @@
 
 (def SELECT_APPLIED_MIGRATIONS
   "SELECT id FROM _migrations")
+
+(def INSERT_MIGRATION
+  "INSERT INTO _migrations VALUES (?, ?)")
+
+(def DELETE_MIGRATION 
+  "DELETE FROM _migrations WHERE id = ?")
