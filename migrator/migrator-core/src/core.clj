@@ -73,7 +73,8 @@
   any 'undo' statement that have failed."
   (let [{:keys [undo-statements-history failed-migration failed-statement successful-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
     (if (:id failed-migration)
-      (let [{:keys [error? message metadata]} (database/apply-statements! ds undo-statements-history)]
+      (let [undo-statements-history (filter (fn [[statement query]] (not (nil? query))) undo-statements-history)
+            {:keys [error? message metadata]} (database/apply-statements! ds undo-statements-history)]
         (if error?
           (assoc r :failed-undo-statement {:name (:failed-statement metadata) :reason message})
           r))
