@@ -118,7 +118,7 @@
         [])
 
       ;; Here, all migrations "until" migration-id (including it) need to be returned:
-      (let [c (if (= appliance-type :apply) > <)
+      (let [c (if (= appliance-type :apply) < >)
             sorted-valid-migrations (->> migrations-report
                                          (filter :valid-migration?)
                                          (sort-by :timestamp c)
