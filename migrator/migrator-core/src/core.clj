@@ -29,12 +29,14 @@
                        utils/migration-edn->statements)
         exec-appliance-type (if (= appliance-type :apply) :apply :rollback)
         undo-appliance-type (appliance-type->undo exec-appliance-type)
-        exec-statements (-> statements
-                            (update-keys #(str migration-id "@" %))
-                            (update-vals (fn [queries] (exec-appliance-type queries))))
-        undo-statements (-> statements
-                            (update-keys #(str migration-id "@" %))
-                            (update-vals (fn [queries] (undo-appliance-type queries))))]
+        
+        exec-statements (map (fn [[statement-name {query exec-appliance-type}]] {:name statement-name 
+                                                                                 :query query 
+                                                                                 :migration-id migration-id}) statements)
+
+        undo-statements (map (fn [[statement-name {query undo-appliance-type}]] {:name statement-name 
+                                                                                 :query query 
+                                                                                 :migration-id migration-id}) statements)]
     {:exec-statements exec-statements
      :undo-statements undo-statements}))
 
@@ -54,9 +56,10 @@
       (fn [result {:keys [id file-path]}]
         (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements id file-path appliance-type)
               {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements)]
+          (println exec-statements)
           (if error?
             (reduced (-> result
-                         (update :undo-statements-history into (take-while (fn [[statement-name _]] (not= failed-statement statement-name)) (reverse undo-statements)))
+                         (update :undo-statements-history into (take-while (fn [{:keys [name]}] (not= failed-statement name)) (reverse undo-statements)))
                          (assoc-in [:failed-migration :id] id)
                          (assoc-in [:failed-migration :failed-statement :name] failed-statement)
                          (assoc-in [:failed-migration :failed-statement :reason] message)))
@@ -64,7 +67,7 @@
                 (update :undo-statements-history into (reverse undo-statements))
                 (update :successful-migrations into [id])))))
       {:appliance-order (map :id migrations)
-       :undo-statements-history {}
+       :undo-statements-history []
        :successful-migrations []}
       migrations)
     :undo-statements-history

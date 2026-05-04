@@ -35,10 +35,10 @@
   It imediately stops the execution if any of the statements fail."
   [ds statements]
   (reduce
-    (fn [error [statement-name statement-query]]
-      (let [{:keys [message error?] :as result} (execute-query! ds statement-query)]
+    (fn [error {:keys [name query]}]
+      (let [{:keys [message error?] :as result} (execute-query! ds query)]
         (if error?
-          (reduced (assoc result :metadata {:failed-statement statement-name}))
+          (reduced (assoc result :metadata {:failed-statement name}))
           result)))
     nil
     statements))
