@@ -136,7 +136,7 @@
                                          (sort-by :timestamp c)
                                          (take-while (fn [{id :id}] (not= migration-id id))))]
 
-        (into sorted-valid-migrations specific-migration)))))
+        (concat sorted-valid-migrations specific-migration)))))
 
 (defn migrate!
   "Purpose:
