@@ -23,14 +23,18 @@
   They don't necessarily represent an :apply and :rollback statements, respectively.
 
   Returns a map containing the ':exec-statements' and ':undo-statements' keywords."
-  [migration-file-path appliance-type]
+  [migration-id migration-file-path appliance-type]
   (let [statements (-> migration-file-path
                        utils/load-edn
                        utils/migration-edn->statements)
         exec-appliance-type (if (= appliance-type :apply) :apply :rollback)
         undo-appliance-type (appliance-type->undo exec-appliance-type)
-        exec-statements (update-vals statements (fn [queries] (exec-appliance-type queries)))
-        undo-statements (update-vals statements (fn [queries] (undo-appliance-type queries)))]
+        exec-statements (-> statements
+                            (update-keys #(str migration-id "@" %))
+                            (update-vals (fn [queries] (exec-appliance-type queries))))
+        undo-statements (-> statements
+                            (update-keys #(str migration-id "@" %))
+                            (update-vals (fn [queries] (undo-appliance-type queries))))]
     {:exec-statements exec-statements
      :undo-statements undo-statements}))
 
@@ -48,7 +52,7 @@
   (update
     (reduce
       (fn [result {:keys [id file-path]}]
-        (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements file-path appliance-type)
+        (let [{:keys [exec-statements undo-statements]} (retrieve-migration-statements id file-path appliance-type)
               {:keys [error? message], {:keys [failed-statement]} :metadata} (database/apply-statements! ds exec-statements)]
           (if error?
             (reduced (-> result
