@@ -10,8 +10,8 @@
 (defn- retrieve-migration-statements
   "Loads the EDN content from the provided file path and retrieve its statements.
 
-  The exec and undo statements are defined based on the 'appliance-type' param. 
-  
+  The exec and undo statements are defined based on the 'appliance-type' param.
+
   - Exec -> What is going the be applied;
   - Undo -> What needs to be applied to rollback the exec statement.
   They don't necessarily represent an :apply and :rollback statements, respectively.
@@ -28,11 +28,11 @@
 
 (defn- apply-migrations-into-database [ds migrations appliance-type]
   "Iterates over a collection of migrations and execute their statements.
-  
+
   The collection iteration is imediately stopped if any statement fail.
 
   The 'appliance-type' param. defines whether the statement :apply or :rollback is executed.
-  
+
   Returns a map containing the following information:
   - :undo-statements-history -> A map of statements that should be executed to rollback the executed statements;
   - :failed-migration -> A map containing information about a failed migration -- or nil;
@@ -54,13 +54,13 @@
      ;;:failed-migration {:id nil :failed-statement nil}
      :successful-migrations []}
     migrations))
-  
+
 (defn- apply-and-rollback-migrations [ds migrations appliance-type]
   "Applies a collection of migrations using the `apply-migrations-into-database` function. It uses the returned `:undo-statements-history` map to rollback
   all executed statements if any of them fail.
 
   If any undo statement execution fail the rest of the statements are not executed.
-  
+
   Returns the returned value of the `apply-migrations-into-database` function but it appends the `:failed-undo-statement` attribute to return information about
   any 'undo' statement that have failed."
   (let [{:keys [undo-statements-history failed-migration failed-statement successful-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
@@ -88,7 +88,13 @@
   It returns a collection of maps in which each map contains:
   - File path of the file (:file-path);
   - Id of migration (:id) or nil;
-  - Timestamp of migration (:timestamp) or nil."
+  - Timestamp of migration (:timestamp) or nil.
+
+  Important details:
+  - The migrations are not sortered;
+  - Migrations that MUST NOT be applied may be returned (it is necessary to filter them later).
+
+  The second detail is based on the fact that migration files may not be ordered based on their file creation."
   [migrations-dir-path migration-id apply-previous?]
   (-> migrations-dir-path
       utils/retrieve-edn-files!
@@ -100,11 +106,26 @@
 
   The parameter 'appliance-type' controls its sort order (:apply for ascending, any other value for descending).
 
-  Returns the report but filtered for only valid migrations."
+  Returns the report but filtered for only valid migrations that must be applied."
   [migrations-report appliance-type migration-id apply-previous?]
-  (let [filtered (filter :valid-migration? migrations-report)
-        specific-migration (if migration-id (some (fn [{id :migration-id}] (= id migration-id))) nil)]
-    (take-while (fn [{id :migration-id}] (not= migration-id id)) sorted-coll)))
+  (let [specific-migration (if migration-id (some (fn [{id :id}] (= migration-id id)) migrations-report) nil]
+    (if (and migration-id
+            (not apply-previous?))
+
+      ;; Here, it is expected that a single, valid migration is returned:
+      (if (:valid-migration? specific-migration)
+        [specific-migration]
+        [])
+
+      ;; Here, all migrations "until" migration-id (including it) need to be returned:
+      (let [comparator (if (= appliance-type :apply) > <)
+            sorted-valid-migrations (->> migrations-report
+                                      (filter :valid-migration?)
+                                      (sort-by (utils/report->timestamp) comparator)
+                                      (take-while (fn [{id :id}] (not= migration-id id))))]
+        (if specific-migration
+          (conj sorted-valid-migrations specific-migration)
+          sorted-valid-migrations)))))
 
 (defn migrate!
   "Purpose:
@@ -112,7 +133,7 @@
 
   Returns:
   - A dictionary containing possible error information."
-  ([migrations-dir-path db-conn-conf {:keys [apply-previous? ignore-invalid-edns? migration-id], 
+  ([migrations-dir-path db-conn-conf {:keys [apply-previous? ignore-invalid-edns? migration-id],
                                       :or {apply-previous? true ignore-invalid-edns? false migration-id nil}}]
 
    ;; Validating if database connection configuration is in the correct model:
@@ -159,7 +180,7 @@
   ([migrations-dir-path db-conn-conf]
    (migrate! migrations-dir-path db-conn-conf {:apply-previous? true
                                                :ignore-invalid-edns? false
-                                               :migration-id nil})))
+                                               :migration-id nil}))))
 
 (defn rollback!
   "Rolls back applied migrations to the database.

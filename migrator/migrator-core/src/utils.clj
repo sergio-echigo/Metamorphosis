@@ -64,7 +64,7 @@
   (:statements edn-content))
 
 (defn valid-migration?
-  "Verifies whether a "
+  "Verifies whether a migration is valid or not."
   [[file-path {:keys [valid?]}]]
   valid?)
 

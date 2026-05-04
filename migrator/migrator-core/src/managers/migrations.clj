@@ -8,21 +8,22 @@
 
 (defn edn-files->migrations-report
   "Iterates over a sequence of maps and returns a migrations report from it.
-  
+
   Each map represents EDN file information. Each map MUST HAVE:
   - The key :file-path (path to an EDN file);
   - The key :content (EDN file's content).
-  
+
   For performance reasons, it is better that a lazy sequence is passed as the edn-files argument."
   ([edn-files migration-id apply-previous?]
-   (reduce 
+   (reduce
      (fn [reports {:keys [file-path content]}]
-       (let [{:keys [id]} content
+       (let [apply-only-one? (and migration-id (not apply-previous?))
+             {:keys [id]} content
              report-information {:valid-migration? (s/valid? :migration/migration content) :file-path file-path}
              report (-> content
                         (select-keys [:id :timestamp])
                         (into report-information))]
-         (conj reports report)))
+           (conj reports report)))
      []
      edn-files))
   ([edn-files migration-id]
@@ -34,5 +35,5 @@
   [migrations migrations-count]
   (some (fn [identifier] (and (not= migrations-count
                                      (count (distinct (map identifier migrations))))
-                               identifier)) 
+                               identifier))
          MIGRATIONS_IDENTIFIERS))
