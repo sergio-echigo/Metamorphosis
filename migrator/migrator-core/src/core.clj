@@ -108,7 +108,7 @@
 
   Returns the report but filtered for only valid migrations that must be applied."
   [migrations-report appliance-type migration-id apply-previous?]
-  (let [specific-migration (if migration-id (some (fn [{id :id}] (= migration-id id)) migrations-report) nil]
+  (let [specific-migration (if migration-id (some (fn [{id :id}] (= migration-id id)) migrations-report) nil)]
     (if (and migration-id
             (not apply-previous?))
 
@@ -118,11 +118,11 @@
         [])
 
       ;; Here, all migrations "until" migration-id (including it) need to be returned:
-      (let [comparator (if (= appliance-type :apply) > <)
+      (let [c (if (= appliance-type :apply) > <)
             sorted-valid-migrations (->> migrations-report
-                                      (filter :valid-migration?)
-                                      (sort-by (utils/report->timestamp) comparator)
-                                      (take-while (fn [{id :id}] (not= migration-id id))))]
+                                         (filter :valid-migration?)
+                                         (sort-by :timestamp c)
+                                         (take-while (fn [{id :id}] (not= migration-id id))))]
         (if specific-migration
           (conj sorted-valid-migrations specific-migration)
           sorted-valid-migrations)))))
@@ -144,7 +144,7 @@
      (let [migrations-report (get-migrations-report migrations-dir-path migration-id apply-previous?)
            migrations-report-count (count migrations-report)
 
-           valid-migrations (migrations-report->valid-sorted-migrations migrations-report :apply)
+           valid-migrations (migrations-report->valid-sorted-migrations migrations-report :apply migration-id apply-previous?)
            valid-migrations-count (count valid-migrations)]
 
        (cond
@@ -157,9 +157,6 @@
 
          (migrations/duplicated-identifiers? valid-migrations valid-migrations-count)
          (standardized-response true "There is duplicated, critical informations across all migrations!")
-
-         (and migration-id
-
 
          :else
 
@@ -180,7 +177,7 @@
   ([migrations-dir-path db-conn-conf]
    (migrate! migrations-dir-path db-conn-conf {:apply-previous? true
                                                :ignore-invalid-edns? false
-                                               :migration-id nil}))))
+                                               :migration-id nil})))
 
 (defn rollback!
   "Rolls back applied migrations to the database.

@@ -68,9 +68,6 @@
   [[file-path {:keys [valid?]}]]
   valid?)
 
-(defn report->timestamp [[_ {:keys [timestamp]}]]
-  timestamp)
-
 (defn duplicated-ids?
   "Verifies if there is any migration with duplicated critical information."
   [migrations]
