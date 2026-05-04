@@ -82,7 +82,9 @@
   Returns the returned value of the `apply-migrations-into-database` function but it appends the `:failed-undo-statement` attribute to return information about
   any 'undo' statement that have failed."
   (let [{:keys [undo-statements-history failed-migration failed-statement successful-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
-    (if (:id failed-migration)
+    (if (and
+          (not (empty? undo-statements-history))
+          (:id failed-migration))
       (let [undo-statements-history (filter (fn [{:keys [query]}] (not (nil? query))) undo-statements-history)
             {:keys [error? message metadata]} (database/apply-statements! ds undo-statements-history (= appliance-type :apply))]
         (if error?
@@ -179,7 +181,6 @@
                internal-migrations-table-exists? (database/migrations-table-exists? ds)
                applied-migrations (if internal-migrations-table-exists? (set (database/select-applied-migrations ds)) #{})
                valid-migrations (filter (comp (complement applied-migrations) :id) valid-migrations)]
-
 
            ;; Creating internal _migrations table if it not exists:
            (when-not internal-migrations-table-exists?
