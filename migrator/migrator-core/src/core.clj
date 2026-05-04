@@ -7,6 +7,12 @@
             [next.jdbc :as jdbc]
             [cheshire.core :as json]))
 
+(defn- appliance-type->undo
+  [appliance-type]
+  (if (= appliance-type :apply)
+    :rollback
+    :apply))
+
 (defn- retrieve-migration-statements
   "Loads the EDN content from the provided file path and retrieve its statements.
 
@@ -21,8 +27,10 @@
   (let [statements (-> migration-file-path
                        utils/load-edn
                        utils/migration-edn->statements)
-        exec-statements (update-vals statements (fn [queries] (appliance-type queries)))
-        undo-statements (update-vals statements (fn [queries] (appliance-type queries)))]
+        exec-appliance-type (if (= appliance-type :apply) :apply :rollback)
+        undo-appliance-type (appliance-type->undo exec-appliance-type)
+        exec-statements (update-vals statements (fn [queries] (exec-appliance-type queries)))
+        undo-statements (update-vals statements (fn [queries] (undo-appliance-type queries)))]
     {:exec-statements exec-statements
      :undo-statements undo-statements}))
 
