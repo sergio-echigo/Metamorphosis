@@ -108,7 +108,7 @@
 
   Returns the report but filtered for only valid migrations that must be applied."
   [migrations-report appliance-type migration-id apply-previous?]
-  (let [specific-migration (if migration-id (some (fn [{id :id}] (= migration-id id)) migrations-report) nil)]
+  (let [specific-migration (some (fn [{id :id, :as whole-migration}] (and (= migration-id id) whole-migration)) migrations-report)]
     (if (and migration-id
             (not apply-previous?))
 
@@ -155,7 +155,7 @@
               (not= migrations-report-count valid-migrations-count))
          (standardized-response true (str "Invalid migrations have been found in the provided directory: " (seq (filter (complement :valid-migration?) migrations-report))))
 
-         (migrations/duplicated-identifiers? valid-migrations valid-migrations-count)
+         (migrations/duplicated-identifiers? migrations-report migrations-report-count)
          (standardized-response true "There is duplicated, critical informations across all migrations!")
 
          :else

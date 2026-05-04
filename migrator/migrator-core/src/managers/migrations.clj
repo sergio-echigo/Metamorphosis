@@ -13,7 +13,11 @@
   - The key :file-path (path to an EDN file);
   - The key :content (EDN file's content).
 
-  For performance reasons, it is better that a lazy sequence is passed as the edn-files argument."
+  Returns a sequence of maps containing:
+  - :valid-migration? -> If the migration is valid or not;
+  - :id -> Migration's id;
+  - :timestamp -> Migration's timestamp."
+
   ([edn-files migration-id apply-previous?]
    (reduce
      (fn [reports {:keys [file-path content]}]
