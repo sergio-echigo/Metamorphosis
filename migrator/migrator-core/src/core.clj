@@ -30,9 +30,12 @@
         exec-appliance-type (if (= appliance-type :apply) :apply :rollback)
         undo-appliance-type (appliance-type->undo exec-appliance-type)
 
-        exec-statements (map (fn [[statement-name {query exec-appliance-type}]] {:name statement-name 
-                                                                                 :query query 
-                                                                                 :migration-id migration-id}) statements)
+        exec-statements-ordering-function (if (= appliance-type :rollback) reverse identity)
+        exec-statements (->> statements
+                             (map (fn [[statement-name {query exec-appliance-type}]] {:name statement-name 
+                                                                                      :query query 
+                                                                                      :migration-id migration-id}))
+                             exec-statements-ordering-function)
 
         undo-statements (map (fn [[statement-name {query undo-appliance-type}]] {:name statement-name 
                                                                                  :query query 
