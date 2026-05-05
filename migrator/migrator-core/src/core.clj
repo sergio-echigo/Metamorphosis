@@ -233,7 +233,7 @@
    (handle-migration-execution migrations-dir-path db-conn-conf :rollback options))
 
   ([migrations-dir-path db-conn-conf]
-   (rollback! migrations-dir-path db-conn-conf :rollback)))
+   (handle-migration-execution! migrations-dir-path db-conn-conf :rollback)))
 
 (defn retrieve-migrations
   "Retrieves all existent migrations.
