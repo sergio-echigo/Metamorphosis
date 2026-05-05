@@ -80,7 +80,7 @@
 
   Returns the returned value of the `apply-migrations-into-database` function but it appends the `:failed-undo-statement` attribute to return information about
   any 'undo' statement that have failed."
-  (let [{:keys [undo-statements-history failed-migration failed-statement successfully-executed-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
+  (let [{:keys [undo-statements-history failed-migration successfully-executed-migrations] :as r} (apply-migrations-into-database ds migrations appliance-type)]
     (if (and
           (not (empty? undo-statements-history))
           (:id failed-migration))
@@ -212,41 +212,41 @@
    (handle-migration-execution migrations-dir-path db-conn-conf appliance-type {:apply-previous? true
                                                                                 :ignore-invalid-edns? false
                                                                                 :migration-id nil
-                                                                                :verify-internal-migrations? true}))
+                                                                                :verify-internal-migrations? true})))
 
-  (defn migrate!
-    "Purpose:
-    - Applies migrations into the database.
+(defn migrate!
+  "Purpose:
+  - Applies migrations into the database.
 
-    Returns:
-    - A dictionary containing possible error information."
-    ([migrations-dir-path db-conn-conf options]
-     (handle-migration-execution migrations-dir-path db-conn-conf :apply options))
+  Returns:
+  - A dictionary containing possible error information."
+  ([migrations-dir-path db-conn-conf options]
+   (handle-migration-execution migrations-dir-path db-conn-conf :apply options))
 
-    ([migrations-dir-path db-conn-conf]
-     (handle-migration-execution migrations-dir-path db-conn-conf :apply)))
+  ([migrations-dir-path db-conn-conf]
+   (handle-migration-execution migrations-dir-path db-conn-conf :apply)))
 
-  (defn rollback!
-    "Rolls back applied migrations to the database.
+(defn rollback!
+  "Rolls back applied migrations to the database.
 
-    - (rollback! migrations-dir-path db-conn-conf)
-    Rolls back the last successfully applied migration.
+  - (rollback! migrations-dir-path db-conn-conf)
+  Rolls back the last successfully applied migration.
 
-    - (rollback! migrations-dir-path migration-name db-conn-conf)
-    Rolls back all migrations up to and including `migration-id`."
-    ([migrations-dir-path db-conn-conf options]
-     (handle-migration-execution migrations-dir-path db-conn-conf :rollback options))
+  - (rollback! migrations-dir-path migration-name db-conn-conf)
+  Rolls back all migrations up to and including `migration-id`."
+  ([migrations-dir-path db-conn-conf options]
+   (handle-migration-execution migrations-dir-path db-conn-conf :rollback options))
 
-    ([migrations-dir-path db-conn-conf]
-     (handle-migration-execution! migrations-dir-path db-conn-conf :rollback)))
+  ([migrations-dir-path db-conn-conf]
+   (handle-migration-execution migrations-dir-path db-conn-conf :rollback)))
 
-  (defn retrieve-migrations
-    "Retrieves all existent migrations.
+(defn retrieve-migrations
+  "Retrieves all existent migrations.
 
-    - (retrieve-migrations migrations-dir-path)
-    Retrieves all migrations without checking their status.
+  - (retrieve-migrations migrations-dir-path)
+  Retrieves all migrations without checking their status.
 
-    - (retrieve-migrations migrations-dir-path return-appliance-status? db-conn-conf)
-    If `return-appliance-status?` is true, returns all migrations with their appliance status."
-    ([migrations-dir-path])
-    ([migrations-dir-path return-appliance-status? db-conn-conf]))
+  - (retrieve-migrations migrations-dir-path return-appliance-status? db-conn-conf)
+  If `return-appliance-status?` is true, returns all migrations with their appliance status."
+  ([migrations-dir-path])
+  ([migrations-dir-path return-appliance-status? db-conn-conf]))
