@@ -29,7 +29,7 @@
                        utils/migration-edn->statements)
         exec-appliance-type (if (= appliance-type :apply) :apply :rollback)
         undo-appliance-type (appliance-type->undo exec-appliance-type)
-        
+
         exec-statements (map (fn [[statement-name {query exec-appliance-type}]] {:name statement-name 
                                                                                  :query query 
                                                                                  :migration-id migration-id}) statements)
@@ -130,7 +130,7 @@
   [migrations-report appliance-type migration-id apply-previous?]
   (let [specific-migration (filter (fn [{:keys [id, valid-migration?]}] (and (= migration-id id) valid-migration?)) migrations-report)]
     (if (and migration-id
-            (not apply-previous?))
+             (not apply-previous?))
       specific-migration
 
       ;; Here, all migrations "until" migration-id (including it) need to be returned:
@@ -143,18 +143,17 @@
         (concat sorted-valid-migrations specific-migration)))))
 
 (defn- handle-migration-execution
-  [migrations-dir-path db-conn-conf appliance-type {:keys [apply-previous?
-                                                           ignore-invalid-edns?
-                                                           migration-id
-                                                           verify-internal-migrations?]
+  ([migrations-dir-path db-conn-conf appliance-type {:keys [apply-previous?
+                                                            ignore-invalid-edns?
+                                                            migration-id
+                                                            verify-internal-migrations?]
 
-                                                    :or {apply-previous? true
-                                                         ignore-invalid-edns? false
-                                                         migration-id nil
-                                                         verify-internal-migrations true}}]
-
-  ;; Validating db-conn-conf
-  (if-not (s/valid? :next.jdbc.specs/db-spec db-conn-conf)
+                                                     :or {apply-previous? true
+                                                          ignore-invalid-edns? false
+                                                          migration-id nil
+                                                          verify-internal-migrations? true}}]
+   ;; Validating db-conn-conf
+   (if-not (s/valid? :next.jdbc.specs/db-spec db-conn-conf)
      (standardized-response true "`db-conn-conf` is not in the required model. Please, use the :next.jdbc.specs/db-spec model.")
 
      ;; Obtaining migrations from the provided directory, filtering by valid migrations and sorting them by their timestamp.
@@ -165,7 +164,7 @@
            valid-migrations-count (count valid-migrations)
 
            ds (jdbc/get-datasource db-conn-conf)
-           
+
            internal-migrations-table-exists? (database/migrations-table-exists? ds)
            applied-migrations (if (and verify-internal-migrations? internal-migrations-table-exists?) (set (database/select-applied-migrations ds)) #{})
 
@@ -209,39 +208,45 @@
                error? (not (nil? failed-migration))]
            (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r))))))
 
-(defn migrate!
-  "Purpose:
-  - Applies migrations into the database.
+  ([migrations-dir-path db-conn-conf appliance-type]
+   (handle-migration-execution migrations-dir-path db-conn-conf appliance-type {:apply-previous? true
+                                                                                :ignore-invalid-edns? false
+                                                                                :migration-id nil
+                                                                                :verify-internal-migrations? true}))
 
-  Returns:
-  - A dictionary containing possible error information."
-  ([migrations-dir-path db-conn-conf options]
-   (handle-migration-execution migrations-dir-path db-conn-conf :apply options))
+  (defn migrate!
+    "Purpose:
+    - Applies migrations into the database.
 
-  ([migrations-dir-path db-conn-conf]
-   (handle-migration-execution migrations-dir-path db-conn-conf :apply)))
+    Returns:
+    - A dictionary containing possible error information."
+    ([migrations-dir-path db-conn-conf options]
+     (handle-migration-execution migrations-dir-path db-conn-conf :apply options))
 
-(defn rollback!
-  "Rolls back applied migrations to the database.
+    ([migrations-dir-path db-conn-conf]
+     (handle-migration-execution migrations-dir-path db-conn-conf :apply)))
 
-  - (rollback! migrations-dir-path db-conn-conf)
-  Rolls back the last successfully applied migration.
+  (defn rollback!
+    "Rolls back applied migrations to the database.
 
-  - (rollback! migrations-dir-path migration-name db-conn-conf)
-  Rolls back all migrations up to and including `migration-id`."
-  ([migrations-dir-path db-conn-conf options]
-   (handle-migration-execution migrations-dir-path db-conn-conf :rollback options))
+    - (rollback! migrations-dir-path db-conn-conf)
+    Rolls back the last successfully applied migration.
 
-  ([migrations-dir-path db-conn-conf]
-   (handle-migration-execution! migrations-dir-path db-conn-conf :rollback)))
+    - (rollback! migrations-dir-path migration-name db-conn-conf)
+    Rolls back all migrations up to and including `migration-id`."
+    ([migrations-dir-path db-conn-conf options]
+     (handle-migration-execution migrations-dir-path db-conn-conf :rollback options))
 
-(defn retrieve-migrations
-  "Retrieves all existent migrations.
+    ([migrations-dir-path db-conn-conf]
+     (handle-migration-execution! migrations-dir-path db-conn-conf :rollback)))
 
-  - (retrieve-migrations migrations-dir-path)
-  Retrieves all migrations without checking their status.
+  (defn retrieve-migrations
+    "Retrieves all existent migrations.
 
-  - (retrieve-migrations migrations-dir-path return-appliance-status? db-conn-conf)
-  If `return-appliance-status?` is true, returns all migrations with their appliance status."
-  ([migrations-dir-path])
-  ([migrations-dir-path return-appliance-status? db-conn-conf]))
+    - (retrieve-migrations migrations-dir-path)
+    Retrieves all migrations without checking their status.
+
+    - (retrieve-migrations migrations-dir-path return-appliance-status? db-conn-conf)
+    If `return-appliance-status?` is true, returns all migrations with their appliance status."
+    ([migrations-dir-path])
+    ([migrations-dir-path return-appliance-status? db-conn-conf]))
