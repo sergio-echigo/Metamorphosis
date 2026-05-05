@@ -142,62 +142,84 @@
 
         (concat sorted-valid-migrations specific-migration)))))
 
-(defn migrate!
-  "Purpose:
-  - Applies migrations into the database.
+(defn- handle-migration-execution
+  [migrations-dir-path db-conn-conf appliance-type {:keys [apply-previous?
+                                                           ignore-invalid-edns?
+                                                           migration-id
+                                                           verify-internal-migrations?]
 
-  Returns:
-  - A dictionary containing possible error information."
-  ([migrations-dir-path db-conn-conf {:keys [apply-previous? ignore-invalid-edns? migration-id],
-                                      :or {apply-previous? true ignore-invalid-edns? false migration-id nil}}]
+                                                    :or {apply-previous? true
+                                                         ignore-invalid-edns? false
+                                                         migration-id nil
+                                                         verify-internal-migrations true}}]
 
-   ;; Validating if database connection configuration is in the correct model:
-   (if-not (s/valid? :next.jdbc.specs/db-spec db-conn-conf)
+  ;; Validating db-conn-conf
+  (if-not (s/valid? :next.jdbc.specs/db-spec db-conn-conf)
      (standardized-response true "`db-conn-conf` is not in the required model. Please, use the :next.jdbc.specs/db-spec model.")
 
      ;; Obtaining migrations from the provided directory, filtering by valid migrations and sorting them by their timestamp.
      (let [migrations-report (get-migrations-report migrations-dir-path migration-id apply-previous?)
            migrations-report-count (count migrations-report)
 
-           valid-migrations (migrations-report->valid-sorted-migrations migrations-report :apply migration-id apply-previous?)
-           valid-migrations-count (count valid-migrations)]
+           valid-migrations (migrations-report->valid-sorted-migrations migrations-report appliance-type migration-id apply-previous?)
+           valid-migrations-count (count valid-migrations)
 
+           ds (jdbc/get-datasource db-conn-conf)
+           
+           internal-migrations-table-exists? (database/migrations-table-exists? ds)
+           applied-migrations (if (and verify-internal-migrations? internal-migrations-table-exists?) (set (database/select-applied-migrations ds)) #{})
+
+           target-filtering-function (if (= appliance-type :rollback) identity complement)
+           valid-migrations (if verify-internal-migrations? 
+                              (filter (-> applied-migrations
+                                          target-filtering-function
+                                          (comp :id))
+                                      valid-migrations)
+                              valid-migrations)]
+
+       ;; Creating the _migrations table if it does not exists:
+       (when-not internal-migrations-table-exists?
+         (database/create-migrations-table! ds))
+
+       ;; Doing some validations and continuing the normal flow:
        (cond
-         (empty? valid-migrations)
-         (standardized-response true "No valid migration was found in the provided directory.")
 
+         ;; No migration to be applied:
+         (empty? valid-migrations)
+         (if (and verify-internal-migrations? (not= 0 valid-migrations-count))
+           (standardized-response false "No valid migration needs to be applied.")
+           (standardized-response true "No valid migration was found in the provided directory."))
+
+         ;; Invalid EDNs were found:
          (and (not ignore-invalid-edns?)
               (not= migrations-report-count valid-migrations-count))
          (standardized-response true (str "Invalid migrations have been found in the provided directory: " (seq (filter (complement :valid-migration?) migrations-report))))
 
+         ;; Critical identifiers are duplicated:
          (migrations/duplicated-identifiers? migrations-report migrations-report-count)
          (standardized-response true "There is duplicated, critical informations across all migrations!")
 
+         ;; A specific migration needs to be applied and it is not valid:
+         (and migration-id
+              (nil? (some (fn [{id :id}] (= migration-id id)) valid-migrations)))
+         (standardized-response true "The requested migration is not valid.")
+
          :else
+         (let [{:keys [failed-migration failed-undo-statement successfully-executed-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations appliance-type)
+               error? (not (nil? failed-migration))]
+           (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r))))))
 
-         ;; Obtaining datasource from db-conn-conf
-         (let [ds (jdbc/get-datasource db-conn-conf)
-               internal-migrations-table-exists? (database/migrations-table-exists? ds)
-               applied-migrations (if internal-migrations-table-exists? (set (database/select-applied-migrations ds)) #{})
-               valid-migrations (filter (comp (complement applied-migrations) :id) valid-migrations)]
+(defn migrate!
+  "Purpose:
+  - Applies migrations into the database.
 
-           ;; If all migrations were applied:
-           (if (empty? valid-migrations)
-             (standardized-response true "All migrations were already applied.")
-             (do
+  Returns:
+  - A dictionary containing possible error information."
+  ([migrations-dir-path db-conn-conf options]
+   (handle-migration-execution migrations-dir-path db-conn-conf :apply options))
 
-               ;; Creating internal _migrations table if it not exists:
-               (when-not internal-migrations-table-exists?
-                 (database/create-migrations-table! ds))
-
-               ;; Applying every migration
-               (let [{:keys [failed-migration failed-undo-statement successfully-executed-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :apply)
-                     error? (not (nil? failed-migration))]
-                 (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r)))))))))
   ([migrations-dir-path db-conn-conf]
-   (migrate! migrations-dir-path db-conn-conf {:apply-previous? true
-                                               :ignore-invalid-edns? false
-                                               :migration-id nil})))
+   (handle-migration-execution migrations-dir-path db-conn-conf :apply)))
 
 (defn rollback!
   "Rolls back applied migrations to the database.
@@ -207,49 +229,11 @@
 
   - (rollback! migrations-dir-path migration-name db-conn-conf)
   Rolls back all migrations up to and including `migration-id`."
-  ([migrations-dir-path db-conn-conf {:keys [apply-previous? ignore-invalid-edns? migration-id verify-internal-migrations?],
-                                      :or {apply-previous? true ignore-invalid-edns? false migration-id nil verify-internal-migrations? true}}]
+  ([migrations-dir-path db-conn-conf options]
+   (handle-migration-execution migrations-dir-path db-conn-conf :rollback options))
 
-   ;; Validating if database connection configuration is in the correct model:
-   (if-not (s/valid? :next.jdbc.specs/db-spec db-conn-conf)
-     (standardized-response true "`db-conn-conf` is not in the required model. Please, use the :next.jdbc.specs/db-spec model.")
-
-     ;; Obtaining migrations from the provided directory, filtering by valid migrations and sorting them by their timestamp.
-     (let [migrations-report (get-migrations-report migrations-dir-path migration-id apply-previous?)
-           migrations-report-count (count migrations-report)
-
-           valid-migrations (migrations-report->valid-sorted-migrations migrations-report :rollback migration-id apply-previous?)
-           valid-migrations-count (count valid-migrations)
-
-           ds (jdbc/get-datasource db-conn-conf)
-           
-           internal-migrations-table-exists? (database/migrations-table-exists? ds)
-           applied-migrations (if (and verify-internal-migrations? internal-migrations-table-exists?) (set (database/select-applied-migrations ds)) #{})
-           
-           valid-migrations (if verify-internal-migrations? (filter (comp applied-migrations :id) valid-migrations) valid-migrations)]
-
-       (cond
-         (empty? valid-migrations)
-         (if verify-internal-migrations?
-           (standardized-response true "No valid migration needs to be applied.")
-           (standardized-response true "No valid migration was found in the provided directory."))
-
-         (and (not ignore-invalid-edns?)
-              (not= migrations-report-count valid-migrations-count))
-         (standardized-response true (str "Invalid migrations have been found in the provided directory: " (seq (filter (complement :valid-migration?) migrations-report))))
-
-         (migrations/duplicated-identifiers? migrations-report migrations-report-count)
-         (standardized-response true "There is duplicated, critical informations across all migrations!")
-
-         :else
-         (let [{:keys [failed-migration failed-undo-statement successfully-executed-migrations] :as r} (apply-and-rollback-migrations ds valid-migrations :rollback)
-               error? (not (nil? failed-migration))]
-           (standardized-response error? (if error? "A migration was not successfully executed. See the :failed-migration attribute to understand its root cause." "") r))))))
   ([migrations-dir-path db-conn-conf]
-   (rollback! migrations-dir-path db-conn-conf {:apply-previous? true
-                                                :ignore-invalid-edns? false
-                                                :migration-id nil
-                                                :verify-internal-migrations? true})))
+   (rollback! migrations-dir-path db-conn-conf :rollback)))
 
 (defn retrieve-migrations
   "Retrieves all existent migrations.
