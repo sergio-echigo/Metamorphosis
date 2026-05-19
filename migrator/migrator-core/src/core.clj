@@ -243,8 +243,8 @@
   ([migrations-dir-path db-conn-conf]
    (handle-migration-execution migrations-dir-path db-conn-conf :rollback)))
 
-(defn retrieve-migrations
-  "Retrieves all existent migrations.
+(defn retrieve-valid-migrations
+  "Retrieves all valid migrations.
 
   - (retrieve-migrations migrations-dir-path)
   Retrieves all migrations without checking their status.

@@ -1,0 +1,67 @@
+{:id "9d9d9cc5-0c52-4f80-92db-92d8e5fdf9c1"
+ :timestamp 9999
+ :description "Creates the core tables for a MySQL Q&A application."
+ :statements
+ {"CREATE_TABLE_USERS"
+  {:apply "CREATE TABLE users (
+             id CHAR(36) PRIMARY KEY,
+             username VARCHAR(50) NOT NULL,
+             email VARCHAR(255) NOT NULL,
+             password_hash VARCHAR(255) NOT NULL,
+             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             UNIQUE KEY uq_users_username (username),
+             UNIQUE KEY uq_users_email (email)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   :rollback "DROP TABLE users"}
+
+  "CREATE_TABLE_SESSIONS"
+  {:apply "CREATE TABLE sessions (
+             id CHAR(36) PRIMARY KEY,
+             user_id CHAR(36) NOT NULL,
+             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             expires_at TIMESTAMP NOT NULL,
+             revoked_at TIMESTAMP NULL,
+             CONSTRAINT fk_sessions_user
+               FOREIGN KEY (user_id) REFERENCES users (id)
+               ON DELETE CASCADE,
+             KEY idx_sessions_user_id (user_id),
+             KEY idx_sessions_expires_at (expires_at)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   :rollback "DROP TABLE sessions"}
+
+  "CREATE_TABLE_QUESTIONS"
+  {:apply "CREATE TABLE questions (
+             id CHAR(36) PRIMARY KEY,
+             user_id CHAR(36) NOT NULL,
+             title VARCHAR(255) NOT NULL,
+             body TEXT NOT NULL,
+             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             CONSTRAINT fk_questions_user
+               FOREIGN KEY (user_id) REFERENCES users (id)
+               ON DELETE CASCADE,
+             KEY idx_questions_user_id (user_id),
+             KEY idx_questions_created_at (created_at)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   :rollback "DROP TABLE questions"}
+
+  "CREATE_TABLE_ANSWERS"
+  {:apply "CREATE TABLE answers (
+             id CHAR(36) PRIMARY KEY,
+             question_id CHAR(36) NOT NULL,
+             user_id CHAR(36) NOT NULL,
+             body TEXT NOT NULL,
+             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             CONSTRAINT fk_answers_question
+               FOREIGN KEY (question_id) REFERENCES questions (id)
+               ON DELETE CASCADE,
+             CONSTRAINT fk_answers_user
+               FOREIGN KEY (user_id) REFERENCES users (id)
+               ON DELETE CASCADE,
+             KEY idx_answers_question_id (question_id),
+             KEY idx_answers_user_id (user_id),
+             KEY idx_answers_created_at (created_at)
+           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+   :rollback "DROP TABLE answers"}}}

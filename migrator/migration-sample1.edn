@@ -1,17 +1,12 @@
 {:id "0155996f-22ab-4a98-acd6-d9749b8515ea"
- :timestamp 834234
+ :timestamp 1
  :description "Creates the 'users' table and inserts a master user."
  :statements
  {"CREATE_TABLE_USERS"
   {:apply "CREATE TABLE users (
-             id UUID,
+             id VARCHAR (100) PRIMARY KEY,
              name VARCHAR(50),
              email VARCHAR(100),
              password VARCHAR(100)
            )"
-   :rollback "DROP TABLE users"}
-
-  "ADD_MASTER_USER"
-  {:apply "INSERT INTO users (id, name, email, password)
-           VALUES (gen_random_uuid(), 'Master', 'admin@admin', '123')"
-   :rollback "DELETE FROM users WHERE email = 'admin@admin'"}}}
+   :rollback "DROP TABLE users"}}}

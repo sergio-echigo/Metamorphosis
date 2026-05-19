@@ -1,0 +1,8 @@
+{:id "0155996f-22ab-4a98-acd6-d9749b8515eb"
+ :timestamp 2
+ :description "Insers the MASTER user on the system."
+ :statements
+ {"INSERT_MASTER_USER"
+  {:apply "INSERT INTO users (id, name, email, password)
+           VALUES ('1', 'Master', 'admin@admin', '123')"
+   :rollback "DELETE FROM users WHERE email = 'admin@admin'"}}}

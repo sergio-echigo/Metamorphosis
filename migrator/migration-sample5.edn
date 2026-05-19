@@ -1,0 +1,15 @@
+{:id "b7d9c3e1-6f52-4d88-8b9a-3e4f6a7c2def"
+ :timestamp 5
+ :description "Creates the table answers"
+ :statements
+ {"CREATE_ANSWERS_TABLE"
+  {:apply "CREATE TABLE answers (
+             id SERIAL PRIMARY KEY,
+             question_id BIGINT UNSIGNED NOT NULL,
+             user_id VARCHAR(100) NOT NULL,
+             body TEXT NOT NULL,
+             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+             FOREIGN KEY (question_id) REFERENCES questions(id),
+             FOREIGN KEY (user_id) REFERENCES users(id)
+           )"
+   :rollback "DROP TABLE answers"}}}

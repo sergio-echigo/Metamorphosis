@@ -1,0 +1,12 @@
+{:id "0155996f-22ab-4a98-acd6-d9749b8515ec"
+ :timestamp 3
+ :description "Creates the table some"
+ :statements
+ {"CREATE_SOME_TABLE"
+  {:apply "CREATE TABLE some (
+            id INT PRIMARY KEY,
+            name VARCHAR(1000)
+          )"
+   :rollback "DROP TABLE some"}}}
+            
+

@@ -1,0 +1,28 @@
+{
+  "error?": false,
+  "reason": "",
+  "value": {
+    "undo-statements-history": {
+      "0155996f-22ab-4a98-acd6-d9749b8515eb-CREATE_TABLE_PETS": "DROPP TABLE pets",
+      "0155996f-22ab-4a98-acd6-d9749b8515ea-CREATE_TABLE_USERS": "DROP TABLE users",
+      "0155996f-22ab-4a98-acd6-d9749b8515ea-ADD_MASTER_USER": null
+    },
+    "failed-migration": {
+      "id": "0155996f-22ab-4a98-acd6-d9749b8515ec",
+      "failed-statement": {
+        "name": "0155996f-22ab-4a98-acd6-d9749b8515ec-CREATE_TABLE_POWERSHELL",
+        "reason": "Exception when trying to execute SQL query CREATE TABL powershell (id VARCHAR(50)): java.sql.SQLSyntaxErrorException: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'TABL powershell (id VARCHAR(50))' at line 1"
+      }
+    },
+    "successful-migrations": [
+      "0155996f-22ab-4a98-acd6-d9749b8515eb",
+      "0155996f-22ab-4a98-acd6-d9749b8515ea"
+    ],
+    "successful-statements": {
+      "0155996f-22ab-4a98-acd6-d9749b8515eb-CREATE_TABLE_PETS": "CREATE TABLE pets (id VARCHAR(50))",
+      "0155996f-22ab-4a98-acd6-d9749b8515ea-CREATE_TABLE_USERS": "CREATE TABLE users (\n             id VARCHAR(100),\n             name VARCHAR(50),\n             email VARCHAR(100),\n             password VARCHAR(100)\n           )",
+      "0155996f-22ab-4a98-acd6-d9749b8515ea-ADD_MASTER_USER": "INSERT INTO users (id, name, email, password)\n           VALUES ('efwiojfij', 'Master', 'admin@admin', '123')"
+    },
+    "failed-undo-statement": "0155996f-22ab-4a98-acd6-d9749b8515eb-CREATE_TABLE_PETS"
+  }
+}
